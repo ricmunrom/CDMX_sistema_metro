@@ -187,9 +187,29 @@ class ForecastService:
                 }
             }
             
+            # Sanitizar los valores antes de devolverlos
+            result = self._sanitize_json_values(result)
+
             logger.info("Pronóstico generado exitosamente")
             return result
             
         except Exception as e:
             logger.error(f"Error al generar pronóstico: {str(e)}", exc_info=True)
             raise Exception(f"Error en generación de pronóstico: {str(e)}")
+        
+    def _sanitize_json_values(self, data: Any) -> Any:
+        """
+        Sanitiza valores no compatibles con JSON (inf, -inf, NaN)
+        """
+        if isinstance(data, dict):
+            return {k: self._sanitize_json_values(v) for k, v in data.items()}
+        elif isinstance(data, list):
+            return [self._sanitize_json_values(item) for item in data]
+        elif isinstance(data, (float, np.float64, np.float32)):
+            # Reemplazar inf, -inf, NaN con None (serán null en JSON)
+            if np.isinf(data) or np.isnan(data):
+                return None
+            return float(data)
+        elif isinstance(data, (np.int64, np.int32)):
+            return int(data)
+        return data
